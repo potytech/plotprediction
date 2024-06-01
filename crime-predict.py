@@ -49,10 +49,14 @@ def gerar_relatorio_frequencias_e_plotar_mapa(dados_preditos, dados_originais, d
     # Dicionário para armazenar a quantidade de cada tipo de crime por bairro
     quantidade_por_bairro = {bairro: {} for bairro in dados_originais["Local"].unique()}
 
-    # Adicionar marcadores para os bairros onde ocorreram crimes
+    # Contar a quantidade de homicídios e feminicídios por bairro
+    mortes_violentas_por_bairro = {bairro: 0 for bairro in dados_originais["Local"].unique()}
     for index, row in dados_originais.iterrows():
         bairro = row["Local"]
         crime = dados_preditos.loc[index, "Tipo de Crime"]
+        if crime in ["Homicídio", "Feminicídio"]:
+            mortes_violentas_por_bairro[bairro] += 1
+
         if crime not in quantidade_por_bairro[bairro]:
             quantidade_por_bairro[bairro][crime] = 1
         else:
@@ -73,6 +77,27 @@ def gerar_relatorio_frequencias_e_plotar_mapa(dados_preditos, dados_originais, d
         # Adicionar marcador com o número de ocorrências no bairro
         folium.Marker(location=coordenadas, popup=popup_content).add_to(mapa)
 
+        # Adicionar círculo vermelho proporcional à quantidade de mortes violentas
+        if mortes_violentas_por_bairro[bairro] > 0:
+            folium.Circle(
+                location=coordenadas,
+                radius=mortes_violentas_por_bairro[bairro] * 100,  # Fator multiplicador ajustado para 100
+                color='red',
+                fill=True,
+                fill_color='red',
+                fill_opacity=0.2,  # Opacidade ajustada para 0.2
+                weight=1,  # Borda mais fina
+                popup=f"{bairro}: {mortes_violentas_por_bairro[bairro]} mortes violentas"
+            ).add_to(mapa)
+            
+            # Adicionar texto com o número de mortes violentas
+            folium.map.Marker(
+                location=coordenadas,
+                icon=folium.DivIcon(
+                    html=f'<div style="font-size: 12pt; color: red;">{mortes_violentas_por_bairro[bairro]}</div>'
+                )
+            ).add_to(mapa)
+
     # Adicionar o total de casos analisados ao final do relatório
     relatorio = "Relatório de Frequências de Crimes\n\n"
     for tipo_crime, total in total_por_tipo.items():
@@ -84,8 +109,6 @@ def gerar_relatorio_frequencias_e_plotar_mapa(dados_preditos, dados_originais, d
 
     # Salvar o mapa como um arquivo HTML
     mapa.save("mapa_crimes_teresina.html")
-
-
 
 # Função principal
 def main():
